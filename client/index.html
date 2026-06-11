@@ -9,46 +9,74 @@
 <body>
   <div class="container">
     <h1>🃏 翻牌配对小游戏</h1>
-    
-    <div class="game-info">
-      <div class="info-item">
-        <span class="label">⏱️ 用时</span>
-        <span id="timer" class="value">00:00</span>
-      </div>
-      <div class="info-item">
-        <span class="label">👆 步数</span>
-        <span id="moves" class="value">0</span>
-      </div>
-      <div class="info-item">
-        <span class="label">✅ 已配对</span>
-        <span id="matched" class="value">0/8</span>
+
+    <div id="modeSelect" class="mode-select">
+      <h2>选择游戏模式</h2>
+      <div class="mode-options">
+        <div class="mode-card" data-mode="practice">
+          <div class="mode-icon">📚</div>
+          <h3>练习模式</h3>
+          <p>可随时查看答案，不进入排行榜</p>
+        </div>
+        <div class="mode-card" data-mode="race">
+          <div class="mode-icon">⚡</div>
+          <h3>竞速模式</h3>
+          <p>禁止提示，严格计时，冲击排行榜</p>
+        </div>
       </div>
     </div>
 
-    <div class="game-board" id="gameBoard"></div>
+    <div id="gameArea" class="game-area hidden">
+      <div class="mode-badge" id="modeBadge">
+        <span id="modeIcon">📚</span>
+        <span id="modeText">练习模式</span>
+      </div>
 
-    <div class="controls">
-      <button id="restartBtn" class="btn btn-primary">🔄 重新开始</button>
-      <button id="leaderboardBtn" class="btn btn-secondary">🏆 排行榜</button>
+      <div class="game-info">
+        <div class="info-item">
+          <span class="label">⏱️ 用时</span>
+          <span id="timer" class="value">00:00</span>
+        </div>
+        <div class="info-item">
+          <span class="label">👆 步数</span>
+          <span id="moves" class="value">0</span>
+        </div>
+        <div class="info-item">
+          <span class="label">✅ 已配对</span>
+          <span id="matched" class="value">0/8</span>
+        </div>
+      </div>
+
+      <div class="game-board" id="gameBoard"></div>
+
+      <div class="controls">
+        <button id="restartBtn" class="btn btn-primary">🔄 重新开始</button>
+        <button id="showAnswerBtn" class="btn btn-hint">💡 查看答案</button>
+        <button id="hideAnswerBtn" class="btn btn-hint hidden">🙈 隐藏答案</button>
+        <button id="leaderboardBtn" class="btn btn-secondary">🏆 排行榜</button>
+        <button id="changeModeBtn" class="btn btn-secondary">🔀 切换模式</button>
+      </div>
     </div>
 
     <div id="winModal" class="modal hidden">
       <div class="modal-content">
-        <h2>🎉 恭喜通关！</h2>
+        <h2 id="winTitle">🎉 恭喜通关！</h2>
+        <p id="winModeBadge" class="win-mode-badge"></p>
         <p>你的成绩：<span id="finalTime">00:00</span></p>
         <p>总步数：<span id="finalMoves">0</span></p>
-        <div class="input-group">
+        <div id="submitScoreSection" class="input-group">
           <label for="playerName">输入你的名字：</label>
           <input type="text" id="playerName" placeholder="匿名玩家" maxlength="10">
         </div>
         <button id="submitScoreBtn" class="btn btn-primary">提交成绩</button>
         <button id="playAgainBtn" class="btn btn-secondary">再玩一次</button>
+        <button id="backToModeSelectBtn" class="btn btn-secondary">返回选模式</button>
       </div>
     </div>
 
     <div id="leaderboardModal" class="modal hidden">
       <div class="modal-content">
-        <h2>🏆 排行榜</h2>
+        <h2>🏆 排行榜 <span class="race-only-tag">(竞速模式)</span></h2>
         <ol id="leaderboardList" class="leaderboard-list"></ol>
         <button id="closeLeaderboardBtn" class="btn btn-secondary">关闭</button>
       </div>

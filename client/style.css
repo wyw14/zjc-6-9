@@ -30,6 +30,137 @@ h1 {
   font-size: 2em;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.mode-select {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mode-select h2 {
+  color: #333;
+  margin-bottom: 25px;
+  font-size: 1.4em;
+}
+
+.mode-options {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.mode-card {
+  background: #f8f9fa;
+  border: 3px solid #e0e0e0;
+  border-radius: 16px;
+  padding: 30px 25px;
+  width: 220px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.mode-card[data-mode="practice"]:hover {
+  border-color: #4facfe;
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%);
+}
+
+.mode-card[data-mode="race"]:hover {
+  border-color: #f093fb;
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.1) 0%, rgba(245, 87, 108, 0.1) 100%);
+}
+
+.mode-icon {
+  font-size: 3em;
+  margin-bottom: 15px;
+}
+
+.mode-card h3 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.3em;
+}
+
+.mode-card p {
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  margin: 0 auto 15px;
+  justify-content: center;
+}
+
+.mode-badge.practice {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.mode-badge.race {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.game-area {
+  display: block;
+}
+
+.btn-hint {
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  color: #8b4513;
+}
+
+.btn-hint:hover {
+  box-shadow: 0 4px 12px rgba(252, 182, 159, 0.4);
+}
+
+.win-mode-badge {
+  display: inline-block;
+  padding: 5px 15px;
+  border-radius: 12px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  font-size: 0.9em;
+}
+
+.win-mode-badge.practice {
+  background: linear-gradient(135deg, rgba(79, 172, 254, 0.2) 0%, rgba(0, 242, 254, 0.2) 100%);
+  color: #2196F3;
+}
+
+.win-mode-badge.race {
+  background: linear-gradient(135deg, rgba(240, 147, 251, 0.2) 0%, rgba(245, 87, 108, 0.2) 100%);
+  color: #E91E63;
+}
+
+.race-only-tag {
+  font-size: 0.6em;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+
+.card.peek .card-front {
+  background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%);
+  border-color: #ffc107;
+}
+
 .game-info {
   display: flex;
   justify-content: space-around;
