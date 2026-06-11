@@ -1,4 +1,4 @@
-﻿﻿const API_BASE_URL = 'http://localhost:6038/api';
+﻿﻿﻿const API_BASE_URL = 'http://localhost:6038/api';
 
 const CARD_EMOJIS = {
   1: '🎃',
@@ -99,6 +99,8 @@ backToModeSelectBtn.addEventListener('click', backToModeSelection);
 async function initGame() {
   resetGameState();
 
+  let shuffledCards;
+
   if (currentMode === GAME_MODE.RACE) {
     try {
       const response = await fetch(`${API_BASE_URL}/race/start`, {
@@ -108,6 +110,7 @@ async function initGame() {
       const data = await response.json();
       if (data.success) {
         raceSessionId = data.sessionId;
+        shuffledCards = data.cards;
       } else {
         throw new Error(data.error || '启动竞速会话失败');
       }
@@ -117,9 +120,10 @@ async function initGame() {
       backToModeSelection();
       return;
     }
+  } else {
+    shuffledCards = await fetchShuffledCards();
   }
 
-  const shuffledCards = await fetchShuffledCards();
   renderCards(shuffledCards);
 
   if (currentMode === GAME_MODE.RACE) {
@@ -313,6 +317,29 @@ function updateTimerDisplay() {
   timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function collectMatches() {
+  const matchedByCardId = new Map();
+
+  cards.forEach((card, index) => {
+    if (card.classList.contains('matched')) {
+      const cardId = card.dataset.id;
+      if (!matchedByCardId.has(cardId)) {
+        matchedByCardId.set(cardId, []);
+      }
+      matchedByCardId.get(cardId).push(index);
+    }
+  });
+
+  const matches = [];
+  for (const [cardId, indices] of matchedByCardId) {
+    if (indices.length === 2) {
+      matches.push([indices[0], indices[1]]);
+    }
+  }
+
+  return matches;
+}
+
 async function endGame() {
   clearInterval(timer);
   timer = null;
@@ -328,10 +355,14 @@ async function endGame() {
     submitScoreBtn.classList.add('hidden');
   } else {
     try {
+      const matches = collectMatches();
       const response = await fetch(`${API_BASE_URL}/race/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: raceSessionId })
+        body: JSON.stringify({
+          sessionId: raceSessionId,
+          matches: matches
+        })
       });
       const data = await response.json();
 

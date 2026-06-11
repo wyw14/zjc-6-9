@@ -46,17 +46,25 @@ app.post('/api/race/start', (req, res) => {
   const sessionId = generateSessionId();
   const startTime = Date.now();
 
+  const cardIds = [];
+  for (let i = 1; i <= CARD_PAIRS; i++) {
+    cardIds.push(i, i);
+  }
+  const shuffledCards = shuffle(cardIds);
+
   raceSessions.set(sessionId, {
     startTime: startTime,
     endTime: null,
     completed: false,
-    submitted: false
+    submitted: false,
+    cards: shuffledCards
   });
 
   res.json({
     success: true,
     sessionId: sessionId,
-    startTime: startTime
+    startTime: startTime,
+    cards: shuffledCards
   });
 });
 
@@ -79,8 +87,49 @@ app.get('/api/shuffle', (req, res) => {
   });
 });
 
+function validateMatches(cards, matches) {
+  if (!Array.isArray(matches) || matches.length !== CARD_PAIRS) {
+    return false;
+  }
+
+  const usedIndices = new Set();
+
+  for (const pair of matches) {
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      return false;
+    }
+
+    const [i, j] = pair;
+
+    if (typeof i !== 'number' || typeof j !== 'number') {
+      return false;
+    }
+
+    if (i < 0 || i >= cards.length || j < 0 || j >= cards.length) {
+      return false;
+    }
+
+    if (i === j) {
+      return false;
+    }
+
+    if (usedIndices.has(i) || usedIndices.has(j)) {
+      return false;
+    }
+
+    if (cards[i] !== cards[j]) {
+      return false;
+    }
+
+    usedIndices.add(i);
+    usedIndices.add(j);
+  }
+
+  return usedIndices.size === CARD_PAIRS * 2;
+}
+
 app.post('/api/race/complete', (req, res) => {
-  const { sessionId } = req.body;
+  const { sessionId, matches } = req.body;
 
   if (!sessionId || !raceSessions.has(sessionId)) {
     return res.status(400).json({
@@ -90,6 +139,13 @@ app.post('/api/race/complete', (req, res) => {
   }
 
   const session = raceSessions.get(sessionId);
+
+  if (session.completed) {
+    return res.status(400).json({
+      success: false,
+      error: '该会话已完成通关，请勿重复提交'
+    });
+  }
 
   if (session.submitted) {
     return res.status(400).json({
@@ -106,9 +162,17 @@ app.post('/api/race/complete', (req, res) => {
     });
   }
 
+  if (!validateMatches(session.cards, matches)) {
+    return res.status(400).json({
+      success: false,
+      error: '通关验证失败：匹配结果不正确'
+    });
+  }
+
   const endTime = Date.now();
   session.endTime = endTime;
   session.completed = true;
+  session.matches = matches;
   const serverCalculatedTime = Math.floor((endTime - session.startTime) / 1000);
 
   raceSessions.set(sessionId, session);
