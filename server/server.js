@@ -14,7 +14,9 @@ const GAME_MODE = {
   PRACTICE: 'practice',
   RACE: 'race'
 };
+const RACE_SESSION_TTL = 10 * 60 * 1000;
 let leaderboard = [];
+let raceSessions = new Map();
 
 function shuffle(array) {
   const arr = [...array];
@@ -24,6 +26,39 @@ function shuffle(array) {
   }
   return arr;
 }
+
+function cleanExpiredSessions() {
+  const now = Date.now();
+  for (const [sessionId, session] of raceSessions) {
+    if (now - session.startTime > RACE_SESSION_TTL) {
+      raceSessions.delete(sessionId);
+    }
+  }
+}
+
+setInterval(cleanExpiredSessions, 60 * 1000);
+
+function generateSessionId() {
+  return 'race_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+}
+
+app.post('/api/race/start', (req, res) => {
+  const sessionId = generateSessionId();
+  const startTime = Date.now();
+
+  raceSessions.set(sessionId, {
+    startTime: startTime,
+    endTime: null,
+    completed: false,
+    submitted: false
+  });
+
+  res.json({
+    success: true,
+    sessionId: sessionId,
+    startTime: startTime
+  });
+});
 
 app.get('/api/shuffle', (req, res) => {
   const { mode } = req.query;
@@ -44,15 +79,51 @@ app.get('/api/shuffle', (req, res) => {
   });
 });
 
-app.post('/api/score', (req, res) => {
-  const { time, playerName, mode } = req.body;
+app.post('/api/race/complete', (req, res) => {
+  const { sessionId } = req.body;
 
-  if (typeof time !== 'number' || time <= 0) {
+  if (!sessionId || !raceSessions.has(sessionId)) {
     return res.status(400).json({
       success: false,
-      error: '无效的成绩数据'
+      error: '无效的游戏会话，请重新开始'
     });
   }
+
+  const session = raceSessions.get(sessionId);
+
+  if (session.submitted) {
+    return res.status(400).json({
+      success: false,
+      error: '该会话成绩已提交，请勿重复提交'
+    });
+  }
+
+  if (Date.now() - session.startTime > RACE_SESSION_TTL) {
+    raceSessions.delete(sessionId);
+    return res.status(400).json({
+      success: false,
+      error: '会话已过期，请重新开始'
+    });
+  }
+
+  const endTime = Date.now();
+  session.endTime = endTime;
+  session.completed = true;
+  const serverCalculatedTime = Math.floor((endTime - session.startTime) / 1000);
+
+  raceSessions.set(sessionId, session);
+
+  res.json({
+    success: true,
+    sessionId: sessionId,
+    startTime: session.startTime,
+    endTime: endTime,
+    time: serverCalculatedTime
+  });
+});
+
+app.post('/api/score', (req, res) => {
+  const { sessionId, playerName, mode } = req.body;
 
   if (!mode || mode !== GAME_MODE.RACE) {
     return res.status(400).json({
@@ -61,13 +132,51 @@ app.post('/api/score', (req, res) => {
     });
   }
 
+  if (!sessionId || !raceSessions.has(sessionId)) {
+    return res.status(400).json({
+      success: false,
+      error: '无效的游戏会话，请重新开始游戏'
+    });
+  }
+
+  const session = raceSessions.get(sessionId);
+
+  if (!session.completed) {
+    return res.status(400).json({
+      success: false,
+      error: '游戏尚未完成，请先通关'
+    });
+  }
+
+  if (session.submitted) {
+    return res.status(400).json({
+      success: false,
+      error: '该会话成绩已提交，请勿重复提交'
+    });
+  }
+
+  const serverCalculatedTime = Math.floor((session.endTime - session.startTime) / 1000);
+
+  if (serverCalculatedTime <= 0) {
+    return res.status(400).json({
+      success: false,
+      error: '成绩数据无效'
+    });
+  }
+
   const entry = {
     id: Date.now(),
-    time: time,
+    time: serverCalculatedTime,
     playerName: playerName || '匿名玩家',
     mode: GAME_MODE.RACE,
+    sessionId: sessionId,
+    startTime: session.startTime,
+    endTime: session.endTime,
     date: new Date().toLocaleString('zh-CN')
   };
+
+  session.submitted = true;
+  raceSessions.set(sessionId, session);
 
   leaderboard.push(entry);
   leaderboard.sort((a, b) => a.time - b.time);
@@ -79,6 +188,7 @@ app.post('/api/score', (req, res) => {
     success: true,
     rank: rank,
     mode: GAME_MODE.RACE,
+    time: serverCalculatedTime,
     leaderboard: leaderboard
   });
 });

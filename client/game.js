@@ -1,4 +1,4 @@
-﻿const API_BASE_URL = 'http://localhost:6038/api';
+﻿﻿const API_BASE_URL = 'http://localhost:6038/api';
 
 const CARD_EMOJIS = {
   1: '🎃',
@@ -56,6 +56,8 @@ let gameStarted = false;
 let isProcessing = false;
 let currentMode = null;
 let answerVisible = false;
+let raceSessionId = null;
+let serverVerifiedTime = null;
 
 function setGameMode(mode) {
   currentMode = mode;
@@ -96,6 +98,27 @@ backToModeSelectBtn.addEventListener('click', backToModeSelection);
 
 async function initGame() {
   resetGameState();
+
+  if (currentMode === GAME_MODE.RACE) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/race/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        raceSessionId = data.sessionId;
+      } else {
+        throw new Error(data.error || '启动竞速会话失败');
+      }
+    } catch (error) {
+      console.error('启动竞速会话失败:', error);
+      alert('启动竞速模式失败，请重试');
+      backToModeSelection();
+      return;
+    }
+  }
+
   const shuffledCards = await fetchShuffledCards();
   renderCards(shuffledCards);
 
@@ -114,6 +137,8 @@ function resetGameState() {
   gameStarted = false;
   isProcessing = false;
   answerVisible = false;
+  raceSessionId = null;
+  serverVerifiedTime = null;
 
   if (timer) {
     clearInterval(timer);
@@ -288,19 +313,49 @@ function updateTimerDisplay() {
   timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-function endGame() {
+async function endGame() {
   clearInterval(timer);
   timer = null;
 
-  finalTimeEl.textContent = timerEl.textContent;
   finalMovesEl.textContent = moves;
 
   winModeBadge.className = 'win-mode-badge ' + currentMode;
+
   if (currentMode === GAME_MODE.PRACTICE) {
+    finalTimeEl.textContent = timerEl.textContent;
     winModeBadge.textContent = '📚 练习模式（不计入排行榜）';
     submitScoreSection.classList.add('hidden');
     submitScoreBtn.classList.add('hidden');
   } else {
+    try {
+      const response = await fetch(`${API_BASE_URL}/race/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: raceSessionId })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        serverVerifiedTime = data.time;
+        const minutes = Math.floor(serverVerifiedTime / 60);
+        const seconds = serverVerifiedTime % 60;
+        finalTimeEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      } else {
+        throw new Error(data.error || '成绩验证失败');
+      }
+    } catch (error) {
+      console.error('验证成绩失败:', error);
+      alert('成绩验证失败：' + (error.message || '请重试'));
+      finalTimeEl.textContent = timerEl.textContent + ' (未验证)';
+      submitScoreSection.classList.add('hidden');
+      submitScoreBtn.classList.add('hidden');
+      winModeBadge.textContent = '⚡ 竞速模式 (成绩验证失败)';
+      setTimeout(() => {
+        winModal.classList.remove('hidden');
+      }, 500);
+      return;
+    }
+
     winModeBadge.textContent = '⚡ 竞速模式';
     submitScoreSection.classList.remove('hidden');
     submitScoreBtn.classList.remove('hidden');
@@ -317,8 +372,17 @@ async function submitScore() {
     return;
   }
 
+  if (!raceSessionId) {
+    alert('无效的游戏会话，请重新开始游戏');
+    return;
+  }
+
+  if (serverVerifiedTime === null) {
+    alert('成绩尚未验证，请稍候或重新游戏');
+    return;
+  }
+
   const playerName = playerNameInput.value.trim() || '匿名玩家';
-  const timeInSeconds = Math.floor(elapsedTime / 1000);
 
   try {
     const response = await fetch(`${API_BASE_URL}/score`, {
@@ -327,7 +391,7 @@ async function submitScore() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        time: timeInSeconds,
+        sessionId: raceSessionId,
         playerName: playerName,
         mode: currentMode
       })
@@ -336,7 +400,10 @@ async function submitScore() {
     const data = await response.json();
 
     if (data.success) {
-      alert(`恭喜！你排名第 ${data.rank} 名！`);
+      const minutes = Math.floor(data.time / 60);
+      const seconds = data.time % 60;
+      const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      alert(`恭喜！用时 ${timeStr}，你排名第 ${data.rank} 名！`);
       winModal.classList.add('hidden');
       showLeaderboard();
     } else {
